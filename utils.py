@@ -1,6 +1,7 @@
 import os
 from typing import Dict
 import openai
+import toml
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -11,6 +12,10 @@ from models import ModelParameters, PromptParameters
 def open_file(filepath):
     with open(filepath, 'r', encoding='utf-8') as infile:
         return infile.read()
+    
+def load_toml(filename):
+    with open(filename, 'r') as f:
+        return toml.load(f)
 
 def openai_create_messages_dict(system_message_template: str, user_input_template: str, variables: Dict):
     
@@ -30,11 +35,11 @@ def openai_create_messages_dict(system_message_template: str, user_input_templat
     return [system_message, user_message]
 
 @retry(wait=wait_random_exponential(min=1, max=3), stop=stop_after_attempt(3))
-async def openai_chat_completion(model_name: str, temperature: str, max_tokens:str, messages: Dict, stream=False):
+def openai_chat_completion(model_name: str, temperature: str, max_tokens:str, messages: Dict, stream=False):
     """
     Wrapper to make a chat completion to OpenAI API with a timeout.
     """
-    return await openai.ChatCompletion.acreate(
+    response =  openai.ChatCompletion.create(
             model=model_name,
             messages=messages,
             temperature=temperature,
@@ -44,10 +49,11 @@ async def openai_chat_completion(model_name: str, temperature: str, max_tokens:s
             presence_penalty=0.5,
             stream=stream
         )
+    return response['choices'][0]['message']['content'].strip()
 
 def handleSend(model_params: ModelParameters, prompt_params: PromptParameters):
-    translate_prompt_template = open_file(filepath=os.path.join("prompts", "chat", "translate.txt"))
-    user_input_template = open_file(filepath=os.path.join("prompts", "chat", "user_input.txt"))
+    translate_prompt_template = open_file(filepath=os.path.join("prompts", "translate.txt"))
+    user_input_template = open_file(filepath=os.path.join("prompts", "user_input.txt"))
 
     # Create the messages dict
     messages = openai_create_messages_dict(translate_prompt_template, user_input_template, prompt_params.dict())
