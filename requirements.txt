@@ -1,0 +1,5 @@
+openai
+streamlit
+tenacity  # for api backoff
+pydantic
+toml
